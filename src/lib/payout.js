@@ -1,6 +1,7 @@
 const async = require('async')
 const fs = require('fs')
 const io = require('socket.io-client')
+const deasync = require('deasync')
 
 const logger = require('./logger')
 
@@ -23,7 +24,11 @@ backend.on('connect_error', () => {
   process.exit()
 })
 
+let reqId = 0
+let resId = null
+
 backend.on('payout_response', res => {
+  resId = res.id
   logger((res.success ? 'success' : 'error'), 'payout', res.message)
 })
 
@@ -64,16 +69,16 @@ function payout () {
     // Handle payments
     function (payables, callback) {
       if (payables.length === 0) return callback(new Error('No miners reach the payout threshold'))
-      payables.forEach((payable, i) => {
-        setTimeout(() => {
-          backend.emit('send_payout', {
-            privateKey,
-            coin: payable.coin,
-            address: payable.address,
-            amount: payable.amount
-          }, config.backend.key)
-        }, 3000)
-      })
+      while (reqId < payables.length) {
+        backend.emit('send_payout', {
+          privateKey,
+          coin: payables[reqId].coin,
+          address: payables[reqId].address,
+          amount: payables[reqId].amount
+        }, config.backend.key, reqId)
+        deasync.loopWhile(() => { return reqId !== resId })
+        reqId++
+      }
       callback(null)
     }
   ], function (err) {
