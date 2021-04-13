@@ -65,7 +65,7 @@ function payout () {
     function (payables, callback) {
       if (payables.length === 0) return callback(new Error('No miners reach the payout threshold'))
       payables.forEach((payable, i) => {
-        backend.emit('add_payout', {
+        backend.emit('send_payout', {
           privateKey,
           coin: payable.coin,
           address: payable.address,

@@ -131,7 +131,7 @@ io.on('connection', (socket) => {
       number
     })
   })
-  socket.on('send_payout', async (data, key) => {
+  socket.on('send_payout', (data, key) => {
     if (key !== config.backend.key) return
     const { privateKey, coin, address, amount } = data
     const tx = {
