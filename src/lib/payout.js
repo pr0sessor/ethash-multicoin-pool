@@ -69,6 +69,7 @@ function payout () {
     // Handle payments
     function (payables, callback) {
       if (payables.length === 0) return callback(new Error('No miners reach the payout threshold'))
+      reqId = 0
       while (reqId < payables.length) {
         backend.emit('send_payout', {
           privateKey,
