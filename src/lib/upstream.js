@@ -47,11 +47,6 @@ class Upstream {
           }
           callback(hash)
         }))
-      /* .on('receipt', () => callback(txSigned.transactionHash))
-        .catch((e) => {
-          console.log(e)
-          callback(null)
-        })) */
       .catch((e) => {
         console.log(e)
         callback(null)

@@ -1,7 +1,6 @@
 const async = require('async')
 const fs = require('fs')
 const io = require('socket.io-client')
-const deasync = require('deasync')
 
 const logger = require('./logger')
 
@@ -18,7 +17,6 @@ if (!fs.existsSync(config.payout.private)) {
 }
 
 const backend = io(`http://${config.backend.host}:${config.backend.port}`)
-let reqId = null
 
 backend.on('connect_error', () => {
   logger('error', 'socket', 'Connection to socket.io server failed')
@@ -26,7 +24,6 @@ backend.on('connect_error', () => {
 })
 
 backend.on('payout_response', res => {
-  reqId = res.id
   logger((res.success ? 'success' : 'error'), 'payout', res.message)
 })
 
@@ -67,15 +64,13 @@ function payout () {
     // Handle payments
     function (payables, callback) {
       if (payables.length === 0) return callback(new Error('No miners reach the payout threshold'))
-      payables.forEach((payable, i) => {
-        backend.emit('send_payout', {
+      payables.forEach((payable) => {
+        backend.emit('add_payout', {
           privateKey,
           coin: payable.coin,
           address: payable.address,
           amount: payable.amount
-        }, config.backend.key, i)
-        console.log(i, reqId)
-        deasync.loopWhile(() => { return i !== reqId })
+        }, config.backend.key)
       })
       callback(null)
     }
