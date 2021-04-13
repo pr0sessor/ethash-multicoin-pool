@@ -15,8 +15,6 @@ Object.keys(config.stratum.coins).forEach(coin => {
   upstreams[coin] = new Upstream(config.stratum.coins[coin].rpc)
 })
 
-const payouts = []
-
 const { Account, Miner, Round, Hashrate, Candidate, Reward, Payout } = require('../models')
 
 io.on('connection', (socket) => {
@@ -133,66 +131,55 @@ io.on('connection', (socket) => {
       number
     })
   })
-  socket.on('add_payout', (data, key) => {
+  socket.on('send_payout', async (data, key) => {
     if (key !== config.backend.key) return
-    const { coin, address, amount } = data
-    const payout = {
-      coin: coin,
-      tx: {
-        from: config.stratum.coins[coin].coinAddress,
-        to: address,
-        value: utils.preHex(bignum(amount).toString(16)),
-        gas: utils.preHex(bignum(config.payout.gas).toString(16)),
-        gasPrice: utils.preHex(bignum(config.payout.gasPrice).toString(16))
-      }
+    const { privateKey, coin, address, amount } = data
+    const tx = {
+      from: config.stratum.coins[coin].coinAddress,
+      to: address,
+      value: utils.preHex(bignum(amount).toString(16)),
+      gas: utils.preHex(bignum(config.payout.gas).toString(16)),
+      gasPrice: utils.preHex(bignum(config.payout.gasPrice).toString(16))
     }
-    payouts.push(payout)
-  })
-  socket.on('send_payout', async (privateKey, key) => {
-    if (key !== config.backend.key) return
-    if (payouts.length > 0) {
-      payouts.forEach(payout => {
-        upstreams[payout.coin].sendTransaction(payout.tx, privateKey, (hash) => {
-          if (!hash) {
-            return socket.emit('payout_response', {
-              success: false,
-              message: `Failed to send ${bignum(payout.tx.value).toString()} to ${payout.tx.to}. (Send transaction error)`
-            })
-          }
-          Account.findOne({ address: payout.tx.to }, async (err2, account) => {
-            if (err2) {
-              return socket.emit('payout_response', {
-                success: false,
-                message: err2
-              })
-            }
-            if (!account) {
-              Account.create({
-                address: payout.tx.to,
-                coin: payout.coin,
-                paid: bignum(payout.tx.value).toString()
-              })
-            } else {
-              Object.assign(account, {
-                paid: bignum(account.paid).add(bignum(payout.tx.value)).toString()
-              }).save()
-            }
-            await Reward.deleteMany({ address: payout.tx.to, status: 'pending' })
-            await Payout.create({
-              address: payout.tx.to,
-              coin: payout.coin,
-              amount: bignum(payout.tx.value).toString(),
-              hash,
-              datePaid: moment().unix()
-            })
-            socket.emit('payout_response', {
-              success: true,
-              message: `Sent ${bignum(payout.tx.value).toString()} to ${payout.tx.to}. Hash: ${hash}`
-            })
+    upstreams[coin].sendTransaction(tx, privateKey, (hash) => {
+      if (!hash) {
+        return socket.emit('payout_response', {
+          success: false,
+          message: `Failed to send ${amount.toString()} to ${address}.`
+        })
+      }
+      Account.findOne({ address }, async (err2, account) => {
+        if (err2) {
+          return socket.emit('payout_response', {
+            success: false,
+            message: err2
           })
+        }
+        if (!account) {
+          Account.create({
+            address,
+            coin,
+            paid: amount
+          })
+        } else {
+          Object.assign(account, {
+            paid: bignum(account.paid).add(bignum(amount)).toString()
+          }).save()
+        }
+        await Reward.deleteMany({ address, status: 'pending' })
+        await Payout.create({
+          address,
+          coin,
+          amount,
+          hash,
+          datePaid: moment().unix()
+        })
+        socket.emit('payout_response', {
+          success: true,
+          message: `Sent ${amount.toString()} to ${address}. Hash: ${hash}`
         })
       })
-    }
+    })
   })
 })
 
