@@ -45,6 +45,7 @@ function pending () {
         if (!latestNumbers[block.coin]) {
           latestNumbers[block.coin] = await upstreams[block.coin].getBlockNumber()
         }
+        console.log(latestNumbers[block.coin])
         return latestNumbers[block.coin] - block.number >= config.unlocker.immatureDepth
       })
       callback(null, blocks)
