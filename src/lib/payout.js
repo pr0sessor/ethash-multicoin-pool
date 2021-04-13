@@ -74,6 +74,7 @@ function payout () {
           address: payable.address,
           amount: payable.amount
         }, config.backend.key, i)
+        console.log(i, reqId)
         deasync.loopWhile(() => { return i !== reqId })
       })
       callback(null)

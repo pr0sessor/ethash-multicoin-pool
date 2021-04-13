@@ -141,7 +141,6 @@ io.on('connection', (socket) => {
       gas: utils.preHex(bignum(config.payout.gas).toString(16)),
       gasPrice: utils.preHex(bignum(config.payout.gasPrice).toString(16))
     }
-    console.log(tx)
     upstreams[coin].sendTransaction(tx, privateKey, (hash) => {
       if (!hash) {
         return socket.emit('payout_response', {
