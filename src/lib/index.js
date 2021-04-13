@@ -68,12 +68,11 @@ function setJob (work) {
   broadcastJob()
 }
 
-function refreshJob () {
-  upstream.getWork(work => {
-    if (!work) return
-    hasher.updateStates(Number(work[3]))
-    setJob(work)
-  })
+async function refreshJob () {
+  const work = await upstream.getWork()
+  if (!work) return
+  hasher.updateStates(Number(work[3]))
+  setJob(work)
 }
 
 function getTopJob () {
@@ -185,7 +184,7 @@ function handleMinerData (jsonData, portData, socket, pushMessage, messenger) {
   }
 
   methods.eth_submitHashrate = () => messenger.sendReplyEP(null, true)
-  methods.eth_submitWork = () => {
+  methods.eth_submitWork = async () => {
     if (!params || params.length !== 3) return messenger.sendReplyEP('Malformed PoW result', null)
     if (!miner) return messenger.sendReplyEP('Not subscribed', null)
     if (!hasher.isReady()) return messenger.sendReplyEP('Validator is not yet ready', null)
@@ -203,17 +202,16 @@ function handleMinerData (jsonData, portData, socket, pushMessage, messenger) {
 
     logger('success', 'stratum', `Valid share received from ${miner.address}@${miner.ip}`)
     if (parseInt(r.result) <= parseInt(job.blockTarget)) {
-      upstream.submitWork(params[0], job.powHash, r.mix_hash, result => {
-        if (result) {
-          backend.emit('candidate', {
-            number: job.blockHeight,
-            nonce: utils.preHex(params[0]),
-            coin,
-            miner
-          }, config.backend.key)
-          logger('warn', 'stratum', `Candidate block #${job.blockHeight} was mined by ${miner.address}@${miner.ip}`)
-        }
-      })
+      const result = await upstream.submitWork(params[0], job.powHash, r.mix_hash)
+      if (result) {
+        backend.emit('candidate', {
+          number: job.blockHeight,
+          nonce: utils.preHex(params[0]),
+          coin,
+          miner
+        }, config.backend.key)
+        logger('warn', 'stratum', `Candidate block #${job.blockHeight} was mined by ${miner.address}@${miner.ip}`)
+      }
     }
     messenger.sendReplyEP(null, true)
   }
@@ -260,7 +258,7 @@ function handleMinerData (jsonData, portData, socket, pushMessage, messenger) {
     logger('info', 'stratum', `Stratum ${(miner.solo ? 'Solo miner' : 'Miner')} connected ${miner.address}@${miner.ip} on port ${miner.port} `)
   }
 
-  methods['mining.submit'] = () => {
+  methods['mining.submit'] = async () => {
     if (!params || params.length !== 3) return messenger.sendReplyES('Malformed PoW result', null)
     if (!miner) return messenger.sendReplyES('Not subscribed', null)
     if (!hasher.isReady()) return messenger.sendReplyES('Validator is not yet ready', null)
@@ -282,17 +280,16 @@ function handleMinerData (jsonData, portData, socket, pushMessage, messenger) {
 
     logger('success', 'stratum', `Valid share received from ${miner.address}@${miner.ip}`)
     if (parseInt(r.result) <= parseInt(job.blockTarget)) {
-      upstream.submitWork(extraNonce + params[2], job.powHash, r.mix_hash, job.blockHeight, result => {
-        if (result) {
-          backend.emit('candidate', {
-            coin,
-            number: job.blockHeight,
-            nonce: utils.preHex(extraNonce + params[2]),
-            miner
-          }, config.backend.key)
-          logger('warn', 'stratum', `Candidate block #${job.blockHeight} was mined by ${miner.address}@${miner.ip}`)
-        }
-      })
+      const result = await upstream.submitWork(extraNonce + params[2], job.powHash, r.mix_hash, job.blockHeight)
+      if (result) {
+        backend.emit('candidate', {
+          coin,
+          number: job.blockHeight,
+          nonce: utils.preHex(extraNonce + params[2]),
+          miner
+        }, config.backend.key)
+        logger('warn', 'stratum', `Candidate block #${job.blockHeight} was mined by ${miner.address}@${miner.ip}`)
+      }
     }
     messenger.sendReplyES(null, true)
   }
@@ -313,7 +310,7 @@ function handleMinerData (jsonData, portData, socket, pushMessage, messenger) {
   methods[method]()
 }
 
-upstream.getWork(work => {
+upstream.getWork().then(work => {
   if (!work) {
     logger('error', 'stratum', 'Unable to get work from chain')
     process.exit()

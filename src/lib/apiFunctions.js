@@ -1,6 +1,4 @@
 const moment = require('moment')
-const logger = require('./logger')
-const deasync = require('deasync')
 const bignum = require('bignum')
 
 const Upstream = require('./upstream')
@@ -14,15 +12,14 @@ Object.keys(config.stratum.coins).forEach(coin => {
   upstreams[coin] = new Upstream(config.stratum.coins[coin].upstream)
 })
 
-const networkStats = (coin, cb) => {
-  upstreams[coin].getBlockByNumber('latest', block => {
-    const difficulty = block.difficulty
-    cb(null, {
-      height: block.number,
-      difficulty,
-      hashrate: parseInt(difficulty / config.stratum.coins[coin].blockTime)
-    })
-  })
+const networkStats = async (coin) => {
+  const block = await upstreams[coin].getBlockByNumber('latest')
+  const difficulty = block.difficulty
+  return {
+    height: block.number,
+    difficulty,
+    hashrate: parseInt(difficulty / config.stratum.coins[coin].blockTime)
+  }
 }
 
 const getPoolStats = async (coin, cb) => {
@@ -39,11 +36,7 @@ const getPoolStats = async (coin, cb) => {
     }
   }
   // network stats
-  networkStats(coin, (err, res) => {
-    if (err) logger('error', 'api', err.message)
-    stats.network = res
-  })
-  deasync.loopWhile(() => { return !stats.network })
+  stats.network = await networkStats(coin)
 
   // pool hashrate
   const dbShare = await Hashrate.find({ coin, createdAt: { $gt: new Date(Date.now() - (600 * 1000)) } })

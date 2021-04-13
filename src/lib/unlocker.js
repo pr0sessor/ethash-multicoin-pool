@@ -1,6 +1,5 @@
 const async = require('async')
 const bignum = require('bignum')
-const deasync = require('deasync')
 const io = require('socket.io-client')
 
 const Upstream = require('./upstream')
@@ -42,12 +41,9 @@ function pending () {
 
     // Get latest block & filter immature block
     function (blocks, callback) {
-      blocks = blocks.filter(block => {
+      blocks = blocks.filter(async block => {
         if (!latestNumbers[block.coin]) {
-          upstreams[block.coin].getBlockNumber(blockNumber => {
-            latestNumbers[block.coin] = blockNumber
-          })
-          deasync.loopWhile(() => { return !latestNumbers[block.coin] })
+          latestNumbers[block.coin] = await upstreams[block.coin].getBlockNumber()
         }
         return latestNumbers[block.coin] - block.number >= config.unlocker.immatureDepth
       })
@@ -56,44 +52,43 @@ function pending () {
 
     // Check if blocks are orphaned
     function (blocks, callback) {
-      async.filter(blocks, (block, mapCback) => {
+      async.filter(blocks, async (block, mapCback) => {
         const coinAddress = config.stratum.coins[block.coin].coinAddress
         let type = 'main'
         let status = 'immature'
         let reward = bignum(utils.toWei(config.stratum.coins[block.coin].blockReward.toString()))
-        upstreams[block.coin].getBlockByNumber(block.number, blockInfo => {
-          if (blockInfo.nonce !== block.nonce) {
-            if (blockInfo.miner.toLowerCase() === coinAddress.toLowerCase()) {
-              type = 'uncle'
-              reward = bignum(utils.toWei(config.stratum.coins[block.coin].uncleReward.toString()))
-            } else {
-              status = 'orphan'
-            }
-          }
-          if (status === 'immature') {
-            if (blockInfo.uncles.length > 0) {
-              reward = reward.add((bignum(blockInfo.uncles.length).div(32)).mul(reward))
-            }
-            reward = reward.add(bignum(utils.toWei(Number(blockInfo.gasUsed).toString(), 'gwei')))
-            const fee = ((block.solo ? config.unlocker.soloFee : config.unlocker.fee) / 100) * Number(reward)
-
-            logger('info', 'unlocker', `Immature ${(type === 'main' ? 'block' : 'uncle block')}: #${block.number} | Reward: ${parseInt(reward)}`)
-            Object.assign(block, {
-              hash: blockInfo.hash,
-              difficulty: blockInfo.difficulty,
-              minerReward: Number(reward) - Number(fee),
-              status,
-              type,
-              reward
-            })
+        const blockInfo = await upstreams[block.coin].getBlockByNumber(block.number)
+        if (blockInfo.nonce !== block.nonce) {
+          if (blockInfo.miner.toLowerCase() === coinAddress.toLowerCase()) {
+            type = 'uncle'
+            reward = bignum(utils.toWei(config.stratum.coins[block.coin].uncleReward.toString()))
           } else {
-            logger('error', 'unlocker', `Block #${block.number} was orphaned`)
-            Object.assign(block, {
-              status
-            })
+            status = 'orphan'
           }
-          return mapCback(true)
-        })
+        }
+        if (status === 'immature') {
+          if (blockInfo.uncles.length > 0) {
+            reward = reward.add((bignum(blockInfo.uncles.length).div(32)).mul(reward))
+          }
+          reward = reward.add(bignum(utils.toWei(Number(blockInfo.gasUsed).toString(), 'gwei')))
+          const fee = ((block.solo ? config.unlocker.soloFee : config.unlocker.fee) / 100) * Number(reward)
+
+          logger('info', 'unlocker', `Immature ${(type === 'main' ? 'block' : 'uncle block')}: #${block.number} | Reward: ${parseInt(reward)}`)
+          Object.assign(block, {
+            hash: blockInfo.hash,
+            difficulty: blockInfo.difficulty,
+            minerReward: Number(reward) - Number(fee),
+            status,
+            type,
+            reward
+          })
+        } else {
+          logger('error', 'unlocker', `Block #${block.number} was orphaned`)
+          Object.assign(block, {
+            status
+          })
+        }
+        return mapCback(true)
       }, function (blocks) {
         if (blocks.length === 0) return callback(new Error('No pending blocks have been verified yet'))
         callback(null, blocks)
@@ -184,12 +179,9 @@ function immature () {
 
     // Get latest block & filter unlockable blocks
     function (blocks, callback) {
-      blocks = blocks.filter(block => {
+      blocks = blocks.filter(async block => {
         if (!latestNumbers[block.coin]) {
-          upstreams[block.coin].getBlockNumber(blockNumber => {
-            latestNumbers[block.coin] = blockNumber
-          })
-          deasync.loopWhile(() => { return !latestNumbers[block.coin] })
+          latestNumbers[block.coin] = await upstreams[block.coin].getBlockNumber()
         }
         return latestNumbers[block.coin] - block.number >= config.unlocker.depth
       })

@@ -131,7 +131,7 @@ io.on('connection', (socket) => {
       number
     })
   })
-  socket.on('send_payout', (data, key, id) => {
+  socket.on('send_payout', async (data, key, id) => {
     if (key !== config.backend.key) return
     const { privateKey, coin, address, amount } = data
     const tx = {
@@ -141,46 +141,53 @@ io.on('connection', (socket) => {
       gas: utils.preHex(bignum(config.payout.gas).toString(16)),
       gasPrice: utils.preHex(bignum(config.payout.gasPrice).toString(16))
     }
-    upstreams[coin].sendTransaction(tx, privateKey, (hash) => {
-      if (!hash) {
+    const txSigned = await upstreams[coin].signTransaction(tx, privateKey)
+    if (!txSigned) {
+      return socket.emit('payout_response', {
+        id,
+        success: false,
+        message: `Failed to send ${amount.toString()} to ${address}. (Failed to sign transaction)`
+      })
+    }
+    const hash = await upstreams[coin].sendSignedTransaction(txSigned.rawTransaction)
+    if (!hash) {
+      return socket.emit('payout_response', {
+        id,
+        success: false,
+        message: `Failed to send ${amount.toString()} to ${address}. (Transaction error)`
+      })
+    }
+    Account.findOne({ address }, async (err2, account) => {
+      if (err2) {
         return socket.emit('payout_response', {
           id,
           success: false,
-          message: `Failed to send ${amount.toString()} to ${address}.`
+          message: err2
         })
       }
-      Account.findOne({ address }, async (err2, account) => {
-        if (err2) {
-          return socket.emit('payout_response', {
-            id,
-            success: false,
-            message: err2
-          })
-        }
-        if (!account) {
-          Account.create({
-            address,
-            coin,
-            paid: amount
-          })
-        } else {
-          Object.assign(account, {
-            paid: bignum(account.paid).add(bignum(amount)).toString()
-          }).save()
-        }
-        await Reward.deleteMany({ address, status: 'pending' })
-        await Payout.create({
+      if (!account) {
+        Account.create({
           address,
           coin,
-          amount,
-          hash,
-          datePaid: moment().unix()
+          paid: amount
         })
-        socket.emit('payout_response', {
-          id,
-          success: true,
-          message: `Sent ${amount.toString()} to ${address}. Hash: ${hash}`
-        })
+      } else {
+        Object.assign(account, {
+          paid: bignum(account.paid).add(bignum(amount)).toString()
+        }).save()
+      }
+      await Reward.deleteMany({ address, status: 'pending' })
+      await Payout.create({
+        address,
+        coin,
+        amount,
+        hash,
+        datePaid: moment().unix()
+      })
+      socket.emit('payout_response', {
+        id,
+        success: true,
+        message: `Sent ${amount.toString()} to ${address}. Hash: ${hash}`
       })
     })
   })

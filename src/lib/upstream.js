@@ -7,68 +7,76 @@ class Upstream {
     this.eth = new Web3(url).eth
   }
 
-  getBlockNumber (callback) {
-    this.eth.getBlock('latest')
-      .then(block => callback(block.number))
-      .catch(() => callback(null))
-  }
-
-  getBlockByNumber (block, callback) {
-    this.eth.getBlock(block)
-      .then(callback)
-      .catch(() => callback(null))
-  }
-
-  getWork (callback) {
-    this.eth.getWork()
-      .then(callback)
-      .catch((e) => {
-        console.log(e)
-        callback(null)
+  getBlockNumber () {
+    return new Promise((resolve, reject) => {
+      this.eth.getBlock('latest', (err, res) => {
+        if (err) reject(err)
+        resolve(res.number)
       })
+    })
   }
 
-  submitWork (nonce, powHash, mixHash, callback) {
-    this.eth.submitWork(utils.preHex(nonce), utils.preHex(powHash), utils.preHex(mixHash))
-      .then(callback)
-      .catch((e) => {
-        console.log(e)
-        callback(null)
+  getBlockByNumber (block) {
+    return new Promise((resolve, reject) => {
+      this.eth.getBlock(block, (err, res) => {
+        if (err) reject(err)
+        resolve(res)
       })
+    })
   }
 
-  sendTransaction (tx, privateKey, callback) {
-    this.eth.accounts.signTransaction(tx, privateKey)
-      .then(txSigned =>
-        this.eth.sendSignedTransaction(txSigned.rawTransaction, (err, hash) => {
-          if (err) {
-            console.log(err)
-            return callback(null)
-          }
-          callback(hash)
-        }))
-      .catch((e) => {
-        console.log(e)
-        callback(null)
+  getWork () {
+    return new Promise((resolve, reject) => {
+      this.eth.getWork((err, res) => {
+        if (err) reject(err)
+        resolve(res)
       })
+    })
   }
 
-  getGasPrice (callback) {
-    this.eth.getGasPrice()
-      .then(price => callback(price))
-      .catch((e) => {
-        console.log(e)
-        callback(null)
+  submitWork (nonce, powHash, mixHash) {
+    return new Promise((resolve, reject) => {
+      this.eth.submitWork(utils.preHex(nonce), utils.preHex(powHash), utils.preHex(mixHash), (err, res) => {
+        if (err) reject(err)
+        resolve(res)
       })
+    })
   }
 
-  getTransactionCount (address, callback) {
-    this.eth.getTransactionCount(address, 'pending')
-      .then(count => callback(count))
-      .catch((e) => {
-        console.log(e)
-        callback(null)
+  signTransaction (tx, privateKey) {
+    return new Promise((resolve, reject) => {
+      this.eth.accounts.signTransaction(tx, privateKey, (err, res) => {
+        if (err) reject(err)
+        resolve(res)
       })
+    })
+  }
+
+  sendSignedTransaction (txRaw) {
+    return new Promise((resolve, reject) => {
+      this.eth.sendSignedTransaction(txRaw, (err, res) => {
+        if (err) reject(err)
+        resolve(res)
+      })
+    })
+  }
+
+  getGasPrice () {
+    return new Promise((resolve, reject) => {
+      this.eth.getGasPrice((err, res) => {
+        if (err) reject(err)
+        resolve(res)
+      })
+    })
+  }
+
+  getTransactionCount (address) {
+    return new Promise((resolve, reject) => {
+      this.eth.getTransactionCount(address, 'pending', (err, res) => {
+        if (err) reject(err)
+        resolve(res)
+      })
+    })
   }
 }
 
