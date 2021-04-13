@@ -184,11 +184,13 @@ io.on('connection', (socket) => {
         hash,
         datePaid: moment().unix()
       })
-      socket.emit('payout_response', {
-        id,
-        success: true,
-        message: `Sent ${amount.toString()} to ${address}. Hash: ${hash}`
-      })
+      setTimeout(() => {
+        socket.emit('payout_response', {
+          id,
+          success: true,
+          message: `Sent ${amount.toString()} to ${address}. Hash: ${hash}`
+        })
+      }, 10000)
     })
   })
 })
