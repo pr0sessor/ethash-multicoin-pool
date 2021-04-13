@@ -1,0 +1,137 @@
+{
+    "stratum": {
+        "enabled": false,
+        "nonceSize": 4,
+        "blockRefreshInterval": 1000,
+        "minerTimeout": 900,
+        "maxBackLog": 8,
+        "diffToShare": 1073741824,
+        "coins": {
+            "cheapeth" : {
+                "name": "CheapETH",
+                "symbol": "CTH",
+                "blockTime": 14.4,
+                "upstream": "http://127.0.0.1:8545",
+                "rpc": "https://rpc.cheapeth.org/rpc",
+                "chainId": 777,
+                "networkId": 777,
+                "blockReward": 2,
+                "uncleReward": 1.75,
+                "coinAddress": "0x0",
+                "solo": true,
+                "ports": [
+                    {
+                        "port": 1001,
+                        "difficulty": 0.5,
+                        "desc": "Low end GPUs"
+                    },
+                    {
+                        "port": 1002,
+                        "difficulty": 2,
+                        "desc": "Mid end GPUs"
+                    },
+                    {
+                        "port": 1003,
+                        "difficulty": 4,
+                        "desc": "High end GPUs"
+                    },
+                    {
+                        "port": 1004,
+                        "difficulty": 8,
+                        "desc": "Nicehash or Mining farms"
+                    }
+                ]
+            },
+            "joys": {
+                "name": "Joys Digital",
+                "symbol": "JOYS",
+                "blockTime": 14.4,
+                "upstream": "http://127.0.0.1:8547",
+                "rpc": "https://node.joys.digital",
+                "chainId": 35855456,
+                "networkId": 35855456,
+                "blockReward": 2,
+                "uncleReward": 1.75,
+                "coinAddress": "0x0",
+                "solo": true,
+                "ports": [
+                    {
+                        "port": 2001,
+                        "difficulty": 0.5,
+                        "desc": "Low end GPUs"
+                    },
+                    {
+                        "port": 2002,
+                        "difficulty": 2,
+                        "desc": "Mid end GPUs"
+                    },
+                    {
+                        "port": 2003,
+                        "difficulty": 4,
+                        "desc": "High end GPUs"
+                    },
+                    {
+                        "port": 2004,
+                        "difficulty": 8,
+                        "desc": "Nicehash or Mining farms"
+                    }
+                ]
+            }
+        }
+    },
+    "unlocker": {
+        "enabled": false,
+        "fee": 0.2,
+        "address": "0x0",
+        "soloFee": 0.2,
+        "interval": 120,
+        "immatureDepth": 10,
+        "depth": 50,        
+        "hashrateDuration": 3600
+    },
+    "payout": {
+        "enabled": false,
+        "interval": 600,
+        "requiredPeers": 5,
+        "gas": 21000,
+        "gasPrice": 50000000000,
+        "threshold": 500000000000000000
+    },
+    "api": {
+        "enabled": false,
+        "port": 8080,
+        "hashrateWindow": {
+            "low": 600,
+            "high": 3600
+        },
+        "max": {
+            "blocks": 50,
+            "payments": 50
+        },
+        "ssl": false,
+        "cert": "",
+        "key": ""
+    },
+    "cron": {
+        "enabled": false,
+        "intervals": {
+            "hashrate": 300,
+            "miners": 300
+        }
+    },
+    "backend": {
+        "enabled": false,
+        "host": "127.0.0.1",
+        "port": 3000,
+        "key": "your secret key"
+    },
+    "mongoose": {
+        "url": "mongodb://127.0.0.1:27017/pool",
+        "options": {
+            "useCreateIndex": true,
+            "useNewUrlParser": true,
+            "useUnifiedTopology": true,
+            "useFindAndModify": false
+        }
+    }
+}
