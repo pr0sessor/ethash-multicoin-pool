@@ -131,7 +131,7 @@ io.on('connection', (socket) => {
       number
     })
   })
-  socket.on('send_payout', async (data, key) => {
+  socket.on('send_payout', async (data, key, id) => {
     if (key !== config.backend.key) return
     const { privateKey, coin, address, amount } = data
     const tx = {
@@ -145,6 +145,7 @@ io.on('connection', (socket) => {
     upstreams[coin].sendTransaction(tx, privateKey, (hash) => {
       if (!hash) {
         return socket.emit('payout_response', {
+          id,
           success: false,
           message: `Failed to send ${amount.toString()} to ${address}. (Send transaction error)`
         })
@@ -152,6 +153,7 @@ io.on('connection', (socket) => {
       Account.findOne({ address }, async (err2, account) => {
         if (err2) {
           return socket.emit('payout_response', {
+            id,
             success: false,
             message: err2
           })
@@ -176,6 +178,7 @@ io.on('connection', (socket) => {
           datePaid: moment().unix()
         })
         socket.emit('payout_response', {
+          id,
           success: true,
           message: `Sent ${amount.toString()} to ${address}. Hash: ${hash}`
         })
