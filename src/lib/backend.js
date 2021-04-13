@@ -190,7 +190,7 @@ io.on('connection', (socket) => {
           success: true,
           message: `Sent ${amount.toString()} to ${address}. Hash: ${hash}`
         })
-      }, 10000)
+      }, 20000)
     })
   })
 })
