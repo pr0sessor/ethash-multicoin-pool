@@ -213,6 +213,7 @@ function immature () {
     }
   ], function (err) {
     if (err) logger('warn', 'unlocker', err.message)
+    console.log(latestNumbers)
     latestNumbers = []
     logger('success', 'unlocker', 'Finished')
   })
